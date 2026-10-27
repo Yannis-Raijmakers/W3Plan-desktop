@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>W3Plan voor docenten</title>
+<meta name="description" content="Een rondleiding door W3Plan, de planner voor de bovenbouw van WD3: toetsen, rooster, Doen en Kennen en cijfers op één plek.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-weight: 400; font-display: swap; src: url("screens/fonts/atkinson-hyperlegible-next-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-weight: 400; font-display: swap; src: url("screens/fonts/atkinson-hyperlegible-next-latin-ext-400-normal.woff2") format("woff2"); unicode-range: U+100-2BA, U+1E00-1EFF; }
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-weight: 600; font-display: swap; src: url("screens/fonts/atkinson-hyperlegible-next-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-weight: 700; font-display: swap; src: url("screens/fonts/atkinson-hyperlegible-next-latin-700-normal.woff2") format("woff2"); }
+
+:root {
+  --ground: #efeeea;
+  --surface: #f6f5f2;
+  --line: #e2e1dc;
+  --ink: #1f1f1f;
+  --muted: #5f5e5b;
+  --grey: #85847f;
+  --doen: #0e6f63;
+  --doen-soft: #e2f3f0;
+  --kennen: #6b3fc4;
+  --kennen-soft: #efe9fa;
+  --today: #d0362b;
+  --shadow: 0 40px 80px -30px rgba(40, 38, 30, .35), 0 12px 30px -12px rgba(40, 38, 30, .18);
+}
+* { box-sizing: border-box; }
+html { background: var(--ground); }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 18px/1.5 "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+a { color: inherit; }
+
+/* Bovenbalk */
+.bar {
+  position: fixed; inset: 0 0 auto 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px;
+  background: color-mix(in srgb, var(--ground) 82%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.lockup { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; letter-spacing: -.02em; text-decoration: none; }
+.lockup svg { width: 26px; height: 26px; fill: var(--ink); }
+.bar nav { display: flex; gap: 4px; }
+.bar nav a { font-size: 15px; text-decoration: none; padding: 6px 12px; border-radius: 999px; color: var(--muted); }
+.bar nav a:hover { background: var(--surface); color: var(--ink); }
+.progress { position: fixed; top: 0; left: 0; height: 3px; width: 100%; background: var(--ink); transform-origin: 0 50%; transform: scaleX(0); z-index: 21; }
+
+/* Hoofdstukken met een plakkend podium */
+.chapter { position: relative; height: var(--len, 300vh); }
+.stage {
+  position: sticky; top: 0; height: 100vh; height: 100svh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 84px 16px 24px;
+  overflow: hidden;
+}
+.head { text-align: center; max-width: 900px; position: relative; z-index: 3; }
+.kicker { font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.title {
+  font-size: clamp(30px, 4.4vw, 60px); line-height: 1.06; font-weight: 700; letter-spacing: -.03em;
+  margin: 0; text-wrap: balance;
+}
+.title .w { color: var(--grey); display: inline-block; }
+.lead { margin: 14px auto 0; max-width: 640px; color: var(--muted); font-size: clamp(16px, 1.4vw, 19px); text-wrap: pretty; }
+.cam { position: relative; flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; min-height: 0; overflow: hidden; margin-top: 8px; padding: 24px 0; }
+
+/* Het scherm: echte snapshots van de app op 1440 × 900 */
+.device {
+  position: relative; width: calc(1440px * var(--k, .5)); height: calc(900px * var(--k, .5));
+}
+.zoom { position: absolute; inset: 0; }
+.scr {
+  position: absolute; left: 0; top: 0; width: 1440px; height: 900px;
+  transform: scale(var(--k, .5)); transform-origin: 0 0;
+}
+.scr > .face {
+  position: absolute; inset: 0; border-radius: 22px; overflow: hidden; background: var(--ground);
+  box-shadow: var(--shadow); outline: 1px solid rgba(0,0,0,.06);
+}
+.scr iframe { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; border: 0; pointer-events: none; background: var(--ground); }
+.face iframe + iframe { opacity: 0; }
+.layer {
+  position: absolute; overflow: hidden; border-radius: 12px; opacity: 0;
+  box-shadow: 0 24px 50px -16px rgba(40,38,30,.45), 0 0 0 1px rgba(0,0,0,.05);
+  background: var(--ground);
+}
+.cursor { position: absolute; left: 0; top: 0; width: 46px; height: 66px; opacity: 0; transform: translate(1500px, 950px); pointer-events: none; }
+.cursor .ring { position: absolute; left: -26px; top: -26px; width: 52px; height: 52px; border-radius: 50%; border: 3px solid var(--ink); opacity: 0; }
+.cursor svg { position: relative; display: block; }
+
+/* Stappen bij de onboarding */
+.steps { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+.steps span { font-size: 14px; padding: 5px 12px; border-radius: 999px; background: var(--surface); color: var(--muted); border: 1px solid var(--line); }
+
+/* Mail van de docent bij Importeren */
+.mail {
+  position: absolute; z-index: 4; left: max(16px, calc(50% - 760px)); top: 50%; width: 300px;
+  background: #fff; border-radius: 16px; padding: 18px 20px; box-shadow: var(--shadow);
+  font-size: 14px; line-height: 1.45; transform: translateY(-50%); opacity: 0;
+}
+.mail .from { font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 10px; }
+.mail b { display: block; margin-top: 6px; }
+.mail ul { margin: 2px 0 0; padding-left: 18px; }
+
+/* Intro met de getallen */
+.problem { padding: 140px 16px 120px; }
+.wrap { max-width: 1120px; margin: 0 auto; }
+.big { font-size: clamp(32px, 5vw, 64px); line-height: 1.05; font-weight: 700; letter-spacing: -.03em; margin: 0; max-width: 900px; text-wrap: balance; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 56px; }
+.stat { background: var(--surface); border-radius: 22px; padding: 26px 24px; box-shadow: 0 1px 0 rgba(0,0,0,.04); }
+.stat strong { display: block; font-size: clamp(44px, 5vw, 68px); line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.stat span { display: block; margin-top: 10px; color: var(--muted); font-size: 16px; }
+.problem .after { margin-top: 40px; font-size: clamp(18px, 1.8vw, 24px); max-width: 760px; text-wrap: pretty; }
+
+/* Rustige blokken na de rondleiding */
+.block { padding: 120px 16px; }
+.block h2 { font-size: clamp(30px, 4vw, 52px); line-height: 1.06; letter-spacing: -.03em; margin: 0 0 16px; text-wrap: balance; }
+.block .sub { color: var(--muted); max-width: 660px; margin: 0 0 44px; }
+.grid { display: grid; gap: 16px; }
+.g3 { grid-template-columns: repeat(3, 1fr); }
+.g2 { grid-template-columns: repeat(2, 1fr); }
+.card { background: var(--surface); border-radius: 22px; padding: 28px; }
+.card h3 { margin: 0 0 8px; font-size: 21px; letter-spacing: -.01em; }
+.card p { margin: 0; color: var(--muted); font-size: 17px; }
+.card .n { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: #fff; font-weight: 700; font-size: 15px; margin-bottom: 18px; }
+.table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 22px; overflow: hidden; font-size: 17px; }
+.table th, .table td { text-align: left; padding: 16px 22px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.table th { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.table tr:last-child td { border-bottom: 0; }
+.tag { display: inline-block; font-size: 14px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.tag.echt { background: var(--doen-soft); color: var(--doen); }
+.tag.leeg { background: var(--kennen-soft); color: var(--kennen); }
+.tag.nep { background: #f6e6d6; color: #8a4500; }
+.reveal { opacity: 0; transform: translateY(40px); }
+
+.end { padding: 160px 16px 80px; text-align: center; }
+.end .mark { width: 120px; height: 120px; fill: var(--ink); overflow: visible; }
+.end h2 { font-size: clamp(36px, 5vw, 72px); letter-spacing: -.03em; margin: 28px 0 14px; line-height: 1.05; }
+.end p { color: var(--muted); max-width: 620px; margin: 0 auto 10px; }
+.end .cta { display: inline-block; margin-top: 30px; background: var(--ink); color: #fff; text-decoration: none; font-weight: 600; padding: 14px 26px; border-radius: 999px; }
+footer { text-align: center; color: var(--muted); font-size: 14px; padding: 40px 16px 60px; border-top: 1px solid var(--line); }
+
+@media (max-width: 860px) {
+  .bar nav { display: none; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .g3, .g2 { grid-template-columns: 1fr; }
+  .mail { display: none; }
+  .stage { padding-top: 72px; }
+  .table th:nth-child(2), .table td:nth-child(2) { display: none; }
+  .table th, .table td { padding: 14px 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chapter { height: auto; }
+  .stage { position: relative; height: auto; min-height: 100vh; }
+  .title .w { color: var(--ink); }
+  .reveal { opacity: 1; transform: none; }
+}
+</style>
+</head>
+<body>
+<div class="progress" aria-hidden="true"></div>
+<header class="bar">
+  <a class="lockup" href="#top" aria-label="W3Plan, naar boven">
+    <svg viewBox="0 0 256 256" aria-hidden="true"><path d="M196,28H196A24,24 0 0 1 220,52V204A24,24 0 0 1 196,228H196A24,24 0 0 1 172,204V52A24,24 0 0 1 196,28ZM61,28H135A25,25 0 0 1 160,53V53A25,25 0 0 1 135,78H61A25,25 0 0 1 36,53V53A25,25 0 0 1 61,28ZM109,103H135A25,25 0 0 1 160,128V128A25,25 0 0 1 135,153H109A25,25 0 0 1 84,128V128A25,25 0 0 1 109,103ZM61,178H135A25,25 0 0 1 160,203V203A25,25 0 0 1 135,228H61A25,25 0 0 1 36,203V203A25,25 0 0 1 61,178Z"/></svg>
+    W3Plan
+  </a>
+  <nav aria-label="Onderdelen">
+    <a href="#rondleiding">Rondleiding</a>
+    <a href="#gegevens">Gegevens</a>
+    <a href="#privacy">Privacy</a>
+    <a href="#vraag">Onze vraag</a>
+  </nav>
+</header>
+
+<main id="top">
+  <!-- 1. Opening -->
+  <section class="chapter" id="opening" style="--len:230vh">
+    <div class="stage">
+      <div class="head">
+        <p class="kicker">Voor de docenten van WD3</p>
+        <h1 class="title" data-words>Alles voor je toetsen, op één plek.</h1>
+        <p class="lead">W3Plan is een planner voor de bovenbouw. Een leerling ziet zijn toetsen, zijn week en wat hij nog moet doen, met de gegevens van school.</p>
+      </div>
+      <div class="cam"><div class="device" role="img" aria-label="Het scherm Vandaag: de dag van de leerling en wat hij nu moet leren" data-states="vandaag" data-layers="vdDag:vandaag"></div></div>
+    </div>
+  </section>
+
+  <!-- Het probleem -->
+  <section class="problem" aria-labelledby="probleem-titel">
+    <div class="wrap">
+      <p class="kicker reveal">Het probleem</p>
+      <h2 class="big reveal" id="probleem-titel">Wat je moet doen staat op veel plekken.</h2>
+      <div class="stats">
+        <div class="stat reveal"><strong data-count="128">0</strong><span>PTA-bestanden, per vak, cohort en niveau</span></div>
+        <div class="stat reveal"><strong data-count="132">0</strong><span>SE-momenten dit jaar, voor havo en vwo</span></div>
+        <div class="stat reveal"><strong data-count="6">0</strong><span>periodes, elk met een eigen afsluitweek</span></div>
+        <div class="stat reveal"><strong>Moodle</strong><span>per vak, elk met een eigen opbouw</span></div>
+      </div>
+      <p class="after reveal">Een leerling moet dat zelf bij elkaar zoeken, kiezen wanneer hij welke toets doet en bijhouden hoe ver hij is. Scroll verder en zie hoe W3Plan dat oplost.</p>
+    </div>
+  </section>
+
+  <div id="rondleiding"></div>
+
+  <!-- 2. Onboarding -->
+  <section class="chapter" id="onboarding" style="--len:520vh">
+    <div class="stage">
+      <div class="head">
+        <p class="kicker">Starten</p>
+        <h2 class="title" data-words>Kies niveau, cohort en vakken.</h2>
+        <p class="lead">Zonder account. In vijf stappen staat het eigen overzicht klaar.</p>
+        <div class="steps" aria-hidden="true"><span>Niveau</span><span>Klas</span><span>Cohort</span><span>Vakken</span><span>Klaar</span></div>
+      </div>
+      <div class="cam"><div class="device" role="img" aria-label="De onboarding: niveau vwo, klas 6, cohort 21 en de vakken van het profiel NT" data-states="ob1-niveau ob1-niveau-gekozen ob2-klas ob2-klas-gekozen ob3-cohort ob3-cohort-gekozen ob4-vakken-leeg ob4-vakken ob6-klaar" data-layers="ob4Vakken:ob4-vakken ob6Overzicht:ob6-klaar"></div></div>
+    </div>
+  </section>
+
+  <!-- 3. PTA -->
+  <section class="chapter" id="pta" style="--len:280vh">
+    <div class="stage">
+      <div class="head">
+        <p class="kicker">Het PTA</p>
+        <h2 class="title" data-words>De toetsen komen uit je eigen PTA.</h2>
+        <p class="lead">Per vak het hele PTA, met vorm, weging en moment. De leerling kiest welke toetsen hij dit jaar doet.</p>
+      </div>
+      <div class="cam"><div class="device" role="img" aria-label="Toetsen kiezen: per vak de toetsen uit het PTA met weging en moment" data-states="vak-toetsen-kiezen" data-layers="ptaVak1:vak-toetsen-kiezen"></div></div>
+    </div>
+  </section>
+
+  <!-- 4. Kalender -->
+  <section class="chapter" id="kalender" style="--len:320vh">
+    <div class="stage">
+      <div class="head">
+        <p class="kicker">Kalender</p>
+        <h2 class="title" data-words>Het rooster van WD3, uur voor uur.</h2>
+        <p class="lead">Mentortijd, domeintijd en projecttijd, met de gekozen toetsen op hun tijd. Met één klik vult de leerling zijn domeintijd voor de week.</p>
+      </div>
+      <div class="cam"><div class="device" role="img" aria-label="De weekkalender van november 2026, eerst leeg en daarna met ingevulde domeintijd" data-states="kalender kalender-gevuld" data-layers="kalBlok:kalender-gevuld kalBlok2:kalender-gevuld"></div></div>
+    </div>
+  </section>
+
+  <!-- 5. Overzicht -->
+  <section class="chapter" id="overzicht" style="--len:300vh">
+    <div class="stage">
+      <div class="head">
+        <p class="kicker">Overzicht</p>
+        <h2 class="title" data-words>Zie de drukke weken aankomen.</h2>
+        <p class="lead">Per periode de lesweken tot de afsluitweek, en een seintje bij drie toetsen in één week.</p>
+      </div>
+      <div class="cam"><div class="device" role="img" aria-label="Het overzicht van periode 2 en daarna de drukste weken van het jaar" data-states="overzicht-periode overzicht-jaar" data-layers="ovDrukte:overzicht-jaar"></div></div>
+    </div>
+  </section>
+
+  <!-- 6. Toets -->
+  <section class="chapter" id="toets" style="--len:420vh">
+    <div class="stage">
+      <div class="head">
+        <p class="kicker">Een toets</p>
+        <h2 class="title" data-words>Per toets: wat je moet doen en kennen.</h2>
+        <p class="lead">Elke toets heeft een lijst in twee delen. De leerling vinkt af en ziet hoe ver hij is.</p>
+      </div>
+      <div class="cam"><div class="device" role="img" aria-label="De toets SE3 Straling, Quantum en Kern- en deeltjesprocessen, met de lijsten Doen en Kennen die worden afgevinkt" data-states="toets toets-lijst toets-afgevinkt" data-layers="toetsDlg:toets"></div></div>
+    </div>
+  </section>
+
+  <!-- 7. Import -->
+  <section class="chapter" id="import" style="--len:320vh">
+    <div class="stage">
+      <div class="head">
+        <p class="kicker">Hier komen jullie in beeld</p>
+        <h2 class="title" data-words>Docenten leveren Doen en Kennen aan.</h2>
+        <p class="lead">Gewone tekst met de kopjes Doen en Kennen, in een mail, in Teams of op Moodle. De leerling plakt hem erin en klikt op Importeren.</p>
+      </div>
+      <div class="cam">
+        <div class="mail" aria-hidden="true">
+          <div class="from">Van de docent natuurkunde · SE3</div>
+          <b>Doen</b>
+          <ul><li>Oefentoets H13 maken</li><li>Opgaven 13.1 t/m 13.4 nakijken</li><li>Samenvatting Quantumwereld</li><li>Binas-tabellen 19 t/m 28</li></ul>
+          <b>Kennen</b>
+          <ul><li>Foto-elektrisch effect</li><li>Energieniveaus en spectra</li><li>Alfa, bèta en gamma</li><li>Halveringstijd en activiteit</li><li>Fotonenergie: E = hf</li></ul>
+        </div>
+        <div class="device" role="img" aria-label="Importeren: de lijst van de docent wordt in de toets geplakt" data-states="toets-import-leeg toets-import-geplakt" data-layers="toetsDlg:toets-import-geplakt"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. Cijfers -->
+  <section class="chapter" id="cijfers" style="--len:280vh">
+    <div class="stage">
+      <div class="head">
+        <p class="kicker">Cijfers en tools</p>
+        <h2 class="title" data-words>Cijfers en weging bij elkaar.</h2>
+        <p class="lead">De leerling vult zijn cijfer zelf in. W3Plan rekent met de weging uit het PTA: welke herkansing het meest oplevert en wat hij nog moet halen.</p>
+      </div>
+      <div class="cam"><div class="device" role="img" aria-label="Cijfers: aangeraden herkansingen met per toets hoeveel het gemiddelde stijgt" data-states="cijfers" data-layers="cijferBlok:cijfers"></div></div>
+    </div>
+  </section>
+
+  <!-- De gegevens -->
+  <section class="block" id="gegevens">
+    <div class="wrap">
+      <p class="kicker reveal">De gegevens</p>
+      <h2 class="reveal">Wat al echt is, en wat nog niet.</h2>
+      <p class="sub reveal">Alle PTA's zijn ingelezen: 643 onderdelen voor 29 vakken, voor havo en vwo en alle cohorten.</p>
+      <table class="table reveal">
+        <thead><tr><th>Wat je ziet</th><th>Waar het vandaan komt</th><th>Stand</th></tr></thead>
+        <tbody>
+          <tr><td>Toetsen, data, tijden, duur, extra tijd, laatste kans</td><td>SE-toetsenoverzicht 2026-2027</td><td><span class="tag echt">Echt</span></td></tr>
+          <tr><td>Vorm en weging per toets</td><td>PTA's 2026-2027</td><td><span class="tag echt">Echt</span></td></tr>
+          <tr><td>Schooldag, afsluitweken en vakanties</td><td>Dagschema en toetsenoverzicht</td><td><span class="tag echt">Echt</span></td></tr>
+          <tr><td>Doen en Kennen per toets</td><td>De lijst die de docent doorstuurt</td><td><span class="tag leeg">Begint leeg</span></td></tr>
+          <tr><td>Cijfers en docenten in deze rondleiding</td><td>Voorbeeld voor de demo</td><td><span class="tag nep">Verzonnen</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Privacy -->
+  <section class="block" id="privacy">
+    <div class="wrap">
+      <p class="kicker reveal">Privacy</p>
+      <h2 class="reveal">Gegevens blijven bij de leerling.</h2>
+      <div class="grid g3">
+        <div class="card reveal"><h3>Geen account</h3><p>Je opent de site en begint. Er is geen login en geen wachtwoord.</p></div>
+        <div class="card reveal"><h3>Lokaal bewaard</h3><p>Vakken, keuzes, afgevinkte taken en cijfers staan op het eigen apparaat, niet op een server.</p></div>
+        <div class="card reveal"><h3>Niets uit Magister</h3><p>Cijfers vult de leerling zelf in. Namen van docenten komen er alleen in met instemming.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Onze vraag -->
+  <section class="block" id="vraag">
+    <div class="wrap">
+      <p class="kicker reveal">Onze vraag</p>
+      <h2 class="reveal">Wat we van jullie vragen.</h2>
+      <p class="sub reveal">Vier concrete dingen. De eerste is de belangrijkste.</p>
+      <div class="grid g2">
+        <div class="card reveal"><span class="n">1</span><h3>Stuur een lijst per toets</h3><p>Gewone tekst met de kopjes Doen en Kennen. Leerlingen importeren hem zelf.</p></div>
+        <div class="card reveal"><span class="n">2</span><h3>Klopt je vak?</h3><p>Kijk of de toetsen, de vorm en de weging goed uit het PTA zijn overgenomen.</p></div>
+        <div class="card reveal"><span class="n">3</span><h3>Overnemen of linken?</h3><p>Wil je dat we je deadlines overnemen, of liever een link naar je Moodle-pagina?</p></div>
+        <div class="card reveal"><span class="n">4</span><h3>Mag je naam erin?</h3><p>Zodat een leerling in domeintijd kan kiezen bij wie hij langsgaat. Nee is ook prima.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="end" aria-labelledby="slot-titel">
+    <svg class="mark" viewBox="0 0 256 256" aria-hidden="true">
+      <path d="M196,28H196A24,24 0 0 1 220,52V204A24,24 0 0 1 196,228H196A24,24 0 0 1 172,204V52A24,24 0 0 1 196,28Z"/>
+      <path d="M61,28H135A25,25 0 0 1 160,53V53A25,25 0 0 1 135,78H61A25,25 0 0 1 36,53V53A25,25 0 0 1 61,28Z"/>
+      <path d="M109,103H135A25,25 0 0 1 160,128V128A25,25 0 0 1 135,153H109A25,25 0 0 1 84,128V128A25,25 0 0 1 109,103Z"/>
+      <path d="M61,178H135A25,25 0 0 1 160,203V203A25,25 0 0 1 135,228H61A25,25 0 0 1 36,203V203A25,25 0 0 1 61,178Z"/>
+    </svg>
+    <h2 id="slot-titel">Mogen we het met jullie vak proberen?</h2>
+    <p>Gemaakt door drie leerlingen: Yannis, Thijn en Billie.</p>
+    <p>Meedoen met je vak, of vragen en zorgen? Laat het weten aan [naam en contact].</p>
+    <a class="cta" href="#top">Nog een keer bekijken</a>
+  </section>
+</main>
+<footer>De demoleerling zit in VWO 6, cohort 21. De cijfers en docentnamen in de beelden zijn verzonnen.</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script>
+// Gemeten in de snapshots (demo/tools/rects.json), in schermpixels van 1440 × 900
+const R = {
+  vdDag: [344, 116, 563, 645], ob1Vwo: [728, 212, 312, 126], ob1Verder: [944, 835, 96, 44],
+  ob2Vwo6: [400, 332, 312, 126], ob3C21: [728, 234, 312, 126], ob4Nt: [300, 208, 126, 52],
+  ob4Vakken: [300, 356, 840, 508], ob6Overzicht: [400, 356, 640, 288], obCol: [400, 96, 640, 362],
+  ptaVak1: [344, 277, 1072, 268], kalVul: [846, 68, 158, 32], kalBlok: [602, 421, 197, 71], kalBlok2: [602, 529, 197, 71],
+  ovJaar: [1055, 70, 52, 28], ovDrukte: [344, 160, 1072, 232], toetsDlg: [320, 32, 800, 836], toetsKop: [344, 96, 752, 32],
+  lijstDoen1: [344, 633, 330, 28], lijstDoen2: [344, 663, 330, 28], lijstKen1: [736, 633, 334, 28], lijstKen2: [736, 663, 334, 28],
+  lijstKen3: [736, 693, 334, 28], lijstBlok: [344, 607, 752, 228], impKnop: [1015, 701, 81, 26], impBlok: [344, 735, 752, 232],
+  cijferBlok: [320, 165, 880, 495],
+};
+const CURSOR = '<svg viewBox="0 0 28 40" width="46" height="66" aria-hidden="true"><path d="M3 2.5v30.5l7.6-7.1 5 11.6 5.1-2.2-5-11.4h10.6z" fill="#161616" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/></svg>';
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function frame(file) {
+  const f = document.createElement('iframe');
+  f.src = 'screens/' + file + '.html';
+  f.tabIndex = -1; f.setAttribute('aria-hidden', 'true');
+  return f;
+}
+
+// Bouw elk scherm op: de toestanden gestapeld, losse lagen en een cursor
+const devices = {};
+document.querySelectorAll('.device').forEach((dev) => {
+  const id = dev.closest('section').id;
+  const zoom = Object.assign(document.createElement('div'), { className: 'zoom' });
+  const scr = Object.assign(document.createElement('div'), { className: 'scr' });
+  const face = Object.assign(document.createElement('div'), { className: 'face' });
+  const states = dev.dataset.states.split(' ');
+  states.forEach((s) => face.appendChild(frame(s)));
+  scr.appendChild(face);
+  const layers = {};
+  (dev.dataset.layers || '').split(' ').filter(Boolean).forEach((pair) => {
+    const [rect, file] = pair.split(':');
+    const [x, y, w, h] = R[rect];
+    const l = Object.assign(document.createElement('div'), { className: 'layer' });
+    Object.assign(l.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' });
+    const f = frame(file);
+    Object.assign(f.style, { left: -x + 'px', top: -y + 'px' });
+    l.appendChild(f);
+    scr.appendChild(l);
+    layers[rect] = l;
+  });
+  const cur = Object.assign(document.createElement('div'), { className: 'cursor', innerHTML: '<div class="ring"></div>' + CURSOR });
+  scr.appendChild(cur);
+  zoom.appendChild(scr);
+  dev.appendChild(zoom);
+  devices[id] = { dev, zoom, frames: [...face.children], layers, cur, ring: cur.firstChild };
+});
+
+// Schaal: het scherm vult de ruimte onder de titel
+function fit() {
+  document.querySelectorAll('.cam').forEach((cam) => {
+    const dev = cam.querySelector('.device');
+    const w = cam.clientWidth * (innerWidth < 860 ? 1 : 0.86);
+    const h = cam.clientHeight * 0.94;
+    dev.style.setProperty('--k', Math.max(0.18, Math.min(w / 1440, h / 900)).toFixed(4));
+  });
+}
+fit();
+addEventListener('resize', fit);
+
+// Titels: elk woord apart, zodat het van grijs naar inkt kan kleuren
+document.querySelectorAll('[data-words]').forEach((t) => {
+  t.innerHTML = t.textContent.trim().split(/\s+/).map((w) => `<span class="w">${w}</span>`).join(' ');
+});
+
+if (reduced) {
+  // Zonder beweging: laat van elk scherm de eindtoestand zien
+  Object.values(devices).forEach((d) => d.frames.forEach((f, i) => (f.style.opacity = i === d.frames.length - 1 ? 1 : 0)));
+} else {
+  gsap.registerPlugin(ScrollTrigger);
+  const mid = ([x, y, w, h]) => [x + w / 2, y + h / 2];
+
+  // Bouwstenen voor de tijdlijn van een hoofdstuk (tijd in tellen, de scroll schaalt mee)
+  const kit = (d, tl) => ({
+    show(i, t) {
+      d.frames.forEach((f, j) => tl.to(f, { opacity: j <= i ? 1 : 0, duration: j === i ? 0.35 : 0.01 }, j === i ? t : t + 0.35));
+    },
+    click(rect, t, then) {
+      const [cx, cy] = mid(R[rect]);
+      tl.to(d.cur, { opacity: 1, duration: 0.2 }, t - 0.9)
+        .to(d.cur, { x: cx, y: cy, duration: 0.9, ease: 'power3.inOut' }, t - 0.9)
+        .to(d.cur, { scale: 0.82, duration: 0.08, yoyo: true, repeat: 1 }, t)
+        .fromTo(d.ring, { opacity: 0.8, scale: 0.3 }, { opacity: 0, scale: 1.6, duration: 0.5 }, t);
+      if (then != null) this.show(then, t + 0.15);
+    },
+    out(t) { tl.to(d.cur, { x: 1500, y: 980, opacity: 0, duration: 0.7, ease: 'power2.in' }, t); },
+    // Een kaart licht op: iets groter, met een diepere schaduw (plat, zonder 3D)
+    lift(rect, t, end = null) {
+      const l = d.layers[rect];
+      tl.set(l, { opacity: 1 }, t).fromTo(l, { scale: 1, y: 0 }, { scale: 1.04, y: -8, duration: 1.1, ease: 'power3.out' }, t);
+      if (end != null) tl.to(l, { scale: 1, y: 0, duration: 0.8, ease: 'power2.inOut' }, end).set(l, { opacity: 0 }, end + 0.8);
+    },
+    push(rect, t, s, end = null) {
+      const [cx, cy] = mid(R[rect]);
+      tl.to(d.zoom, { scale: s, transformOrigin: `${(cx / 14.4).toFixed(1)}% ${(cy / 9).toFixed(1)}%`, duration: 1.3, ease: 'power2.inOut' }, t);
+      if (end != null) tl.to(d.zoom, { scale: 1, duration: 1.1, ease: 'power2.inOut' }, end);
+    },
+    words(sec, t) {
+      tl.to(sec.querySelectorAll('.title .w'), { color: '#1f1f1f', duration: 0.3, stagger: 0.12 }, t);
+    },
+  });
+
+  function chapter(id, build, total) {
+    const sec = document.getElementById(id);
+    const d = devices[id];
+    const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
+    const k = kit(d, tl);
+    build(k, tl, d, sec);
+    tl.to({}, { duration: Math.max(0.01, total - tl.duration()) });
+    ScrollTrigger.create({ trigger: sec, start: 'top top', end: 'bottom bottom', scrub: 0.7, animation: tl });
+  }
+
+  // Opening: de titel kleurt bij het laden, het scherm schuift omhoog tijdens het scrollen
+  gsap.to('#opening .title .w', { color: '#1f1f1f', duration: 0.45, stagger: 0.12, delay: 0.3 });
+  gsap.from('#opening .lead, #opening .kicker', { opacity: 0, y: 16, duration: 0.8, delay: 0.2 });
+  gsap.set(devices.opening.dev, { y: 120, scale: 0.92 });
+  chapter('opening', (k, tl, d) => {
+    tl.to(d.dev, { y: 0, scale: 1, duration: 3, ease: 'expo.out' }, 0);
+    k.lift('vdDag', 2.6);
+  }, 7);
+
+  chapter('onboarding', (k, tl, d, sec) => {
+    k.words(sec, 0);
+    const pills = sec.querySelectorAll('.steps span');
+    const pill = (i, t) => tl.to(pills, { backgroundColor: (j) => (j === i ? '#1f1f1f' : '#f6f5f2'), color: (j) => (j === i ? '#fff' : '#5f5e5b'), duration: 0.2 }, t);
+    pill(0, 0.5);
+    k.push('obCol', 1.2, 1.12, 7.2);
+    k.click('ob1Vwo', 2, 1); k.show(2, 3); pill(1, 3);
+    k.click('ob2Vwo6', 4, 3); k.show(4, 5); pill(2, 5);
+    k.click('ob3C21', 6, 5); k.show(6, 7); pill(3, 7);
+    k.click('ob4Nt', 8, 7); k.out(8.8);
+    k.lift('ob4Vakken', 9, 11);
+    k.show(8, 12); pill(4, 12);
+    k.lift('ob6Overzicht', 12.6);
+    k.push('ob6Overzicht', 12.4, 1.18);
+  }, 15.5);
+
+  chapter('pta', (k, tl, d, sec) => {
+    k.words(sec, 0);
+    k.lift('ptaVak1', 2);
+    k.push('ptaVak1', 4.5, 1.15);
+  }, 9);
+
+  chapter('kalender', (k, tl, d, sec) => {
+    k.words(sec, 0);
+    k.push('kalVul', 1.4, 1.25, 4.4);
+    k.click('kalVul', 3, 1); k.out(3.8);
+    k.lift('kalBlok', 5); k.lift('kalBlok2', 5.25);
+    k.push('kalBlok', 7.5, 1.15);
+  }, 11);
+
+  chapter('overzicht', (k, tl, d, sec) => {
+    k.words(sec, 0);
+    k.click('ovJaar', 2.5, 1); k.out(3.4);
+    k.lift('ovDrukte', 4);
+    k.push('ovDrukte', 4.4, 1.15);
+  }, 9.5);
+
+  chapter('toets', (k, tl, d, sec) => {
+    k.words(sec, 0);
+    k.lift('toetsDlg', 0.8, 3.4);
+    k.push('toetsKop', 1.4, 1.3, 3.2);
+    k.show(1, 3.6);
+    k.push('lijstBlok', 4, 1.35);
+    ['lijstDoen1', 'lijstDoen2', 'lijstKen1', 'lijstKen2', 'lijstKen3'].forEach((r, i) => k.click(r, 6 + i));
+    k.show(2, 10.1); k.out(10.8);
+    tl.to(d.zoom, { scale: 1, duration: 1.4, ease: 'power2.inOut' }, 11.5);
+  }, 13.5);
+
+  chapter('import', (k, tl, d, sec) => {
+    const mail = sec.querySelector('.mail');
+    k.words(sec, 0);
+    tl.fromTo(mail, { opacity: 0, x: -80 }, { opacity: 1, x: 0, duration: 1.2, ease: 'expo.out' }, 0.8);
+    k.push('impBlok', 2.4, 1.2);
+    k.click('impKnop', 3.6, 1);
+    tl.to(mail, { x: 220, y: 60, scale: 0.4, opacity: 0, duration: 0.9, ease: 'power2.in' }, 3.3);
+    k.out(4.4);
+    k.lift('toetsDlg', 5);
+  }, 9);
+
+  chapter('cijfers', (k, tl, d, sec) => {
+    k.words(sec, 0);
+    k.lift('cijferBlok', 2);
+    k.push('cijferBlok', 2.4, 1.12);
+  }, 8);
+
+  // Blokken na de rondleiding schuiven op hun plek
+  gsap.utils.toArray('.reveal').forEach((el) => {
+    gsap.to(el, { opacity: 1, y: 0, duration: 0.9, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%' } });
+  });
+  // Getallen tellen op
+  document.querySelectorAll('[data-count]').forEach((el) => {
+    const o = { v: 0 };
+    gsap.to(o, { v: +el.dataset.count, duration: 1.6, ease: 'power3.out', onUpdate: () => (el.textContent = Math.round(o.v)), scrollTrigger: { trigger: el, start: 'top 85%' } });
+  });
+  // Het symbool klapt balk voor balk open
+  gsap.from('.end .mark path', { scaleX: 0, opacity: 0, transformOrigin: '0% 50%', duration: 0.5, stagger: 0.25, ease: 'expo.out', scrollTrigger: { trigger: '.end', start: 'top 75%' } });
+  // Voortgangsbalk bovenaan
+  gsap.to('.progress', { scaleX: 1, ease: 'none', scrollTrigger: { start: 0, end: 'max', scrub: true } });
+}
+// De getallen staan meteen goed zonder animatie
+if (reduced) document.querySelectorAll('[data-count]').forEach((el) => (el.textContent = el.dataset.count));
+</script>
+</body>
+</html>
